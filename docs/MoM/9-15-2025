@@ -1,0 +1,36 @@
+meeting stuff
+
+almond people:
+see contour maps for bug data
+
+previously had 1 set of locations, entered once per year
+
+trap data gotten every week automatically
+
+data used to produce contours
+
+colors produced by interpolation
+
+expand DAS to have more monitoring that can isolate nodes (done)
+
+data entry for the above is still manual, someone has to paste in csv weekly
+
+automated traps in California, people don't want to enter data manually
+
+sprint 1 main focus: hook up automated traps to automatically go through contour system (will appease the almond people)
+
+scoutlab traps data is being pulled in, need to use the data
+
+later on (future sprints?):
+insect abundance data mapped out
+is spray going down at the right time?
+insecticides often kill the eggs, not the insect
+want to be able to click on a pin and see abundance + timing
+	- give dynamic recommendations based on timing + 	abundance
+integrate timing piece with abundance piece
+
+linkage between population dynamics and phenology(???)
+
+want to model space and time models together
+
+automated data
