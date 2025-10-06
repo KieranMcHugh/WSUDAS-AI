@@ -1,0 +1,32 @@
+10/6 meeting:
+
+for 2nd semester: pulling in additional trap data when looking over stations
+
+dto(?) service that sits over api
+
+how stations work:
+
+base station class
+
+networks inherit from station class
+
+awn: school's weather network (also have virtual station) - inherit from separate class, base class pulls data from class and creates separate data class
+cant make changes to weather database without changing everything ("has magic behind it")
+
+missing values are likely due to loading just station network or station by itself
+
+getStationByID()
+
+model data needed by web which is in a separate place
+
+tries to map userID for map from model schema, not web schema
+
+contours & models are where the bulk of the work are going to come from
+
+look at contour dev branch, try and spin up some contour maps to get a better understanding of how the code works
+
+have own contour map for potatoes
+
+access potatoes.localhost
+
+ca.localhost (for cannabis, probably not needed)
