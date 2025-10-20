@@ -12,8 +12,24 @@ make sure it is running in chrome, firefox has some known issues
 -  go to
 https://das.localhost/
 
+username/email: dev@wsu.edu
+password: password
+
 https://potatoes.localhost/admin/potatoes/trap-counts-upload ---- upload data for traps (note: station names need to match those of saved ones)
 
 generate contours:
 
-php artisan contours:create --on_day=monday --model_id=88 ---- need to switch to the current day
+php artisan contours:create --on_day=monday --model_id=1 ---- need to switch to the current day
+
+when writing in PHPStorm: need to set version to 8.2 (or 8.1, whichever doesn't show errors on existing code)
+
+
+switching to contour-dev (should be done now):
+
+git checkout contour-dev
+
+git stash (if necessary)
+
+php artisan migrate
+
+npm run dev
