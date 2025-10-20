@@ -1,0 +1,19 @@
+Notes for running https://das.localhost/
+
+- start containers
+
+- in das-web run: 
+npm run dev
+
+
+make sure it is running in chrome, firefox has some known issues
+
+
+-  go to
+https://das.localhost/
+
+https://potatoes.localhost/admin/potatoes/trap-counts-upload ---- upload data for traps (note: station names need to match those of saved ones)
+
+generate contours:
+
+php artisan contours:create --on_day=monday --model_id=88 ---- need to switch to the current day
