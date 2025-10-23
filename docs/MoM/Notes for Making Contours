@@ -15,6 +15,8 @@ https://das.localhost/
 username/email: dev@wsu.edu
 password: password
 
+(may need to navigate to contours thru DAS dashboard for the moment)
+
 https://potatoes.localhost/admin/potatoes/trap-counts-upload ---- upload data for traps (note: station names need to match those of saved ones)
 
 generate contours:
