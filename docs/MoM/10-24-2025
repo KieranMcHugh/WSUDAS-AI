@@ -1,0 +1,84 @@
+every sunday pull data & generate new traps
+
+only 2 endpoints that worked with scoutlabs was export device delta count and
+
+php:artisan traps
+
+entering data to:
+
+service_models -> contour_locations
+
+add scoutlabs data id
+
+generate region id for scoutlabs
+
+maybe make a command that creates a new contour region
+
+artisan command ^
+
+make a scheduled command that pulls data over
+
+match contour_trap_counts
+
+created_at record 
+
+have 3 crops and pest associated with it
+
+each crop needs contour map generated with them
+
+inside of the location, lat and long are stored
+
+need name, region id, and year
+
+need command 
+
+query SQL-like to get id
+
+need contour trap counts
+
+need 3 different model ids (Jesse might work on)
+
+location id will map to a location
+
+survey date will be from every sunday
+
+trap_count is the detection count
+
+scoutlabs_traps needs to go to contour_locations
+
+have everythign we need except contour_region id (do not make a static variable, whatever the name is, the id should not be hard-coded, get from the name), need to make that manually
+
+dd(ContourRegion::where('name', 'Scout Lab Traps')->pluck('id'));
+
+in weather:
+
+
+trap_count (model id w/ Jesse) location id needs to be associated with a trap in contour_location
+
+trap_id to id in contour_trap_counts, which gets name and then gets id from contour_locations
+
+have to bring over the scoutlab traps model and scotulabs trap record model will both need to be mirrored in device_models (because data flows from weather into models, models pulls data from weather)
+
+process would be running weekly during production (sunday morning @ midnight, ours might run 7-8pm)
+
+php artisan make:model ScoutLabDevice ( <- model we make)
+
+copy over what we have on weather
+
+pull ScoutLabTrap data to models
+
+Generating Model Classes in Laravel documentation, otherwise standalone SQL queries
+
+next steps:
+
+have understanding of how to use models and how to navigate
+
+can just grab data from connection (weather) and table (scoutlabs records)
+
+see how you can pull data from weather database and models
+
+read data from Laravel database ******** <- main goal
+
+read over Laravel documentation
+
+Jesse will write documentation
