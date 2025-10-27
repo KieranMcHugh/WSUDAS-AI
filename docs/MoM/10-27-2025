@@ -1,0 +1,9 @@
+grab data from weather
+
+set up as a queueable job (for future-proofing)
+
+insert into contours
+
+can use database query builder or rm, need job and artisan
+
+raw queries with Laravel query builder
