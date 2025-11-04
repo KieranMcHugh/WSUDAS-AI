@@ -1,4 +1,5 @@
 The following covers the meetings between Oct 17th and Oct 23rd and are focused on generating contour maps
+Some additional notes added on 11/3/2025
 
 
 
@@ -16,12 +17,38 @@ make sure it is running in chrome, firefox has some known issues
 -  go to
 https://das.localhost/
 
+
+
+<------ Login Info ------>
+
 username/email: dev@wsu.edu
 password: password
 
-(may need to navigate to contours thru DAS dashboard for the moment)
+<------------------------>
 
 https://potatoes.localhost/admin/potatoes/trap-counts-upload ---- upload data for traps (note: station names need to match those of saved ones)
+
+https://das.localhost/admin/potatoes/trap-locations   <-------------------- shows map
+
+
+
+
+want to track coddling moth for now, could hard code for now (will need to be flexible in the future)
+
+-----------
+
+To get coddling moth ID:
+
+$cmId = Model::whereCode(‘CM’)->pluck(‘id’);
+
+or something like:
+
+$cm_model_id = Model::whereCode(‘CM’)->pluck(‘id’);
+
+want model_id to be coddling moths in specific
+
+-----------
+
 
 generate contours:
 
