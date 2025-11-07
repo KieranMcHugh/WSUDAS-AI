@@ -1,0 +1,8 @@
+for survey date (Nov 9th) want all data from previous week (back to Nov 2nd)
+
+staging site: https://staging.potatoes.decisionaid.systems/
+(was weird, below works)
+
+https://potatoes.decisionaid.systems/
+
+survey_date in "contour_trap_counts" mirrors created_at in "scout_labs_records"
