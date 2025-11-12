@@ -1,0 +1,42 @@
+11/10/2025
+
+$cmModel = ModelCard::whereCode('CM')->where('country','US')->pluck('id');
+$lastUpdated = ContourTrapCount::whereModelId($cmModel)->last()->survey_date;
+$lastUpdated = new Carbon($lastUpdated); //Last Reported Data
+$lastSunday = $lastUpdated->subDay()->startOfWeek();
+
+$records = DB::table('scout_lab_records')->where('recorded_at' > $lastSunday)->get();
+
+$model = DB::table(‘model_card’)->where(‘code’,’CM’)->where(‘country’,’US’)->get() $modelId = $model->id;
+
+
+
+
+contour_id does not matter: grab data fom last week to next Saturday
+
+grab data, consolidate to week
+
+survey date will be 11/9 if data grabbed on 11/9
+
+data needs to be in there by 7am
+
+could schedule chained task, run our command, update contours, generate contour map
+
+have to find codling moth ID in the database in model_card table <----- need to check every time since it could change (i.e. it's 3 for us but could be 7 on live site)
+
+get data from last week - set survey date to the day it's generated (I think).
+
+More or less want to group past week under 1 date since the model
+
+$date = now()->format(‘Y-m-d’)
+$records = DB::table('scout_lab_records')->where('recorded_at' > $lastSaturday)->where(‘recorded_at’ < now()->startOfDay())->get();
+
+1. need to get last survey date for model('cm')
+
+2. If it does not exist grab the start of the year, see what data is in the trap
+
+3. use Carbon date manipulation to grab everything from previous Sunday to Saturday
+
+4. get iterable data and then insert
+
+For job interviews: Have tons and tons of work in portfolio
