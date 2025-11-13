@@ -1,0 +1,33 @@
+11/12/2025
+
+trap data IS NOT pulled in weekly, it is pulled in daily (should not effect scheduling though)
+
+use SMAPP_id to distinguish between duplicate locations in scout_labs_traps
+
+can do connection and use weather connection: "DB::connection(‘weather’)->table(‘scout_lab_traps’)->where(…)"
+
+app/Console/Commands/ContoursCreate.php
+
+--------> instead of grabbing names for traps, want to instead grab smapp_id
+
+
+
+
+
+
+pull region_id
+
+grab locations in the contour map
+
+see data from the locations
+
+
+
+
+
+
+now we grab the latest record
+
+if record from Saturday doesn't exist, grab data from previous days
+
+log if trap data does not exist
