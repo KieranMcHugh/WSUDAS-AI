@@ -1,54 +1,64 @@
 <?php
-
 namespace App\Console\Commands;
-
-use App\Jobs\SyncContourDataJob;
-use App\ORM\ModelCard;
-use App\ORM\Potatoes\ContourLocation;
-use App\ORM\Potatoes\ContourRegion;
-use App\ORM\ScoutLabs\ScoutLabsRecord;
-use App\ORM\ScoutLabs\ScoutLabsTrap;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class DataTransfer
+class DataTransfer extends Command
 {
-    protected $signature = 'sync:scout-labs-to-contour
-                            {--region-name= : Region name (e.g., "Scout Labs")}
-                            {--chunk=500 : Number of records to process per chunk}
-                            {--sync : Run jobs synchronously instead of queuing them}';
+    protected $signature = 'sync:data
+                            {--region-name=Scout Labs: Region name in contour_regions table}
+                            {--chunk=500 : Number of records to process per chunk}';
+
     protected $description = 'Sync data from Scout Labs tables (scout_labs_traps, scout_labs_records) to Contour tables (contour_locations, contour_trap_counts)';
 
-    private int $chunkSize;
+    public function handle(): int
+    {
+        $regionName = $this->option('region-name') ?: 'Scout Labs';
+        $chunkSize = (int)$this->option('chunk');
 
-    public function handle(): void{
-    $locationRecord = DB::connection('weather')->table('scout_labs_traps')->get();
+        $regionId = DB::table('contour_regions')
+            ->where('name', $regionName)
+            ->value('id');
 
-    $regionId = DB::table('contour_regions')->whereName('Scout Lab Traps')->value('id');
-    if ($regionId === null) {
-        $this->error('Scout Lab Traps region not found.');
-    }
-    foreach($locationRecord as $location){
-        DB::table('contour_locations')->insert("id, name, lat, lng")
-            ->where('id', $location->id)->value("id")
-            ->where('name', $location->smapp_id)->value("name")
-            ->where("lat", $location->lat)->value("lat")
-            ->where("lng", $location->lng)->value("lng")
-            ->where('region_id', $regionId)->value("region_id");
+        if (!$regionId) {
+            $this->error("Region '{$regionName}' not found in contour_regions.");
+            return Command::FAILURE;
         }
 
-    $trapsCounts = DB::connection('weather')->table('scout_labs_records')->get();
-    foreach($trapsCounts as $trapCount){
-        DB::table('contour_trap_counts')->insert("id, location_id, count, recorded_at, created_at, updated_at")
-            ->where('id', $trapCount->id)->value("id")
-            ->where('location_id', $trapCount->trap_id)->value("location_id")
-            ->where("count", $trapCount->count)->value("count")
-            ->where("recorded_at", $trapCount->recorded_at)->value("recorded_at")
-            ->where("created_at", $trapCount->created_at)->value("created_at")
-            ->where("updated_at", $trapCount->updated_at)->value("updated_at");
-        }
+        DB::connection('weather')
+            ->table('scout_labs_traps')
+            ->orderBy('id')
+            ->chunk($chunkSize, function ($traps) use ($regionId) {
+                foreach ($traps as $trap) {
+                    DB::table('contour_locations')->Insert(
+                        [
+                            'name' => $trap->smapp_id,
+                            'contour_region_id' => $regionId,
+                            'lat' => $trap->lat,
+                            'lng' => $trap->lng,
+                        ]
+                    );
+                }
+            });
+
+        DB::connection('weather')
+            ->table('scout_labs_records')
+            ->orderBy('id')
+            ->chunk($chunkSize, function ($records)
+            {
+                foreach ($records as $record) {
+                    DB::table('contour_trap_counts')->insert(
+                        [
+                            'location_id' => $record->trap_id,
+                            'count' => $record->count,
+                        ]
+                    );
+                }
+            }
+            );
+        $this->info('Finished syncing locations.');
+        return Command::SUCCESS;
     }
-    
 }
