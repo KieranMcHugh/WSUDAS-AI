@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Jobs\SyncContourDataJob;
+use App\ORM\ModelCard;
+use App\ORM\Potatoes\ContourLocation;
+use App\ORM\Potatoes\ContourRegion;
+use App\ORM\ScoutLabs\ScoutLabsRecord;
+use App\ORM\ScoutLabs\ScoutLabsTrap;
+use Carbon\Carbon;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class DataTransfer
+{
+    protected $signature = 'sync:scout-labs-to-contour
+                            {--region-name= : Region name (e.g., "Scout Labs")}
+                            {--chunk=500 : Number of records to process per chunk}
+                            {--sync : Run jobs synchronously instead of queuing them}';
+    protected $description = 'Sync data from Scout Labs tables (scout_labs_traps, scout_labs_records) to Contour tables (contour_locations, contour_trap_counts)';
+
+    private int $chunkSize;
+
+    public function handle(): void{
+    $locationRecord = DB::connection('weather')->table('scout_labs_traps')->get();
+
+    $regionId = DB::table('contour_regions')->whereName('Scout Lab Traps')->value('id');
+    if ($regionId === null) {
+        $this->error('Scout Lab Traps region not found.');
+    }
+    foreach($locationRecord as $location){
+        DB::table('contour_locations')->insert("id, name, lat, lng")
+            ->where('id', $location->id)->value("id")
+            ->where('name', $location->smapp_id)->value("name")
+            ->where("lat", $location->lat)->value("lat")
+            ->where("lng", $location->lng)->value("lng")
+            ->where('region_id', $regionId)->value("region_id");
+        }
+
+    $trapsCounts = DB::connection('weather')->table('scout_labs_records')->get();
+    foreach($trapsCounts as $trapCount){
+        DB::table('contour_trap_counts')->insert("id, location_id, count, recorded_at, created_at, updated_at")
+            ->where('id', $trapCount->id)->value("id")
+            ->where('location_id', $trapCount->trap_id)->value("location_id")
+            ->where("count", $trapCount->count)->value("count")
+            ->where("recorded_at", $trapCount->recorded_at)->value("recorded_at")
+            ->where("created_at", $trapCount->created_at)->value("created_at")
+            ->where("updated_at", $trapCount->updated_at)->value("updated_at");
+        }
+    }
+    
+}
