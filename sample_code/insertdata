@@ -5,60 +5,70 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class DataTransfer extends Command
+class InsertData extends Command
 {
+
     protected $signature = 'sync:data
                             {--region-name=Scout Labs: Region name in contour_regions table}
                             {--chunk=500 : Number of records to process per chunk}';
 
     protected $description = 'Sync data from Scout Labs tables (scout_labs_traps, scout_labs_records) to Contour tables (contour_locations, contour_trap_counts)';
 
-    public function handle(): int
+    public function handle()
     {
-        $regionName = $this->option('region-name') ?: 'Scout Labs';
-        $chunkSize = (int)$this->option('chunk');
+        DB::beginTransaction();
 
-        $regionId = DB::table('contour_regions')
-            ->where('name', $regionName)
-            ->value('id');
+        try {
+            $regionName = $this->option('region-name') ?: 'Scout Labs';
+            $chunkSize = (int)$this->option('chunk');
 
-        if (!$regionId) {
-            $this->error("Region '{$regionName}' not found in contour_regions.");
+            $regionId = DB::table('contour_regions')
+                ->where('name', $regionName)
+                ->value('id');
+
+            if (!$regionId) {
+                $this->error("Region '{$regionName}' not found in contour_regions.");
+                return Command::FAILURE;
+            }
+
+            DB::connection('weather')
+                ->table('scout_labs_traps')
+                ->orderBy('id')
+                ->chunk($chunkSize, function ($traps) use ($regionId) {
+                    foreach ($traps as $trap) {
+                        DB::table('contour_locations')->Insert(
+                            [
+                                'name' => $trap->smapp_id,
+                                'contour_region_id' => $regionId,
+                                'lat' => $trap->lat,
+                                'lng' => $trap->lng,
+                            ]
+                        );
+                    }
+                });
+
+            DB::connection('weather')
+                ->table('scout_labs_records')
+                ->orderBy('id')
+                ->chunk($chunkSize, function ($records) {
+                    foreach ($records as $record) {
+                        DB::table('contour_trap_counts')->insert(
+                            [
+                                'location_id' => $record->trap_id,
+                                'count' => $record->count,
+                            ]
+                        );
+                    }
+                }
+                );
+            $this->info('Finished syncing locations.');
+            DB::commit(); // everything should be ok, can commit to DB
+            return Command::SUCCESS;
+        } catch (\Exception $e) {
+            DB::rollBack(); // error occurred, do not commit to DB
+            $this->error("Sync failed: " . $e->getMessage());
+            Log::error("Scout Labs sync error", ['exception' => $e]);
             return Command::FAILURE;
         }
-
-        DB::connection('weather')
-            ->table('scout_labs_traps')
-            ->orderBy('id')
-            ->chunk($chunkSize, function ($traps) use ($regionId) {
-                foreach ($traps as $trap) {
-                    DB::table('contour_locations')->Insert(
-                        [
-                            'name' => $trap->smapp_id,
-                            'contour_region_id' => $regionId,
-                            'lat' => $trap->lat,
-                            'lng' => $trap->lng,
-                        ]
-                    );
-                }
-            });
-
-        DB::connection('weather')
-            ->table('scout_labs_records')
-            ->orderBy('id')
-            ->chunk($chunkSize, function ($records)
-            {
-                foreach ($records as $record) {
-                    DB::table('contour_trap_counts')->insert(
-                        [
-                            'location_id' => $record->trap_id,
-                            'count' => $record->count,
-                        ]
-                    );
-                }
-            }
-            );
-        $this->info('Finished syncing locations.');
-        return Command::SUCCESS;
     }
 }
