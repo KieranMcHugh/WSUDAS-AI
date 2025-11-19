@@ -2,133 +2,101 @@
 
 namespace App\Console\Commands;
 
-use App\ORM\Potatoes\ContourLocation;
-use App\ORM\Potatoes\ContourRegion;
 use Carbon\Carbon;
-use Carbon\CarbonInterface;
-use DB;
 use Illuminate\Console\Command;
-use Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
-class GetTrapData extends Command
+class DataTransfer extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'app:get-trap-data';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Command description';
+    protected $signature = 'sync:data
+                            {--region-name=Scout Labs : Region name in contour_regions table}
+                            {--chunk=500 : Number of records to process per chunk}';
 
-    /**
-     * Execute the console command.
+    protected $description = 'Sync data from Scout Labs tables (scout_labs_traps, scout_labs_records) to Contour tables (contour_locations, contour_trap_counts)';
+
+    /*
+     * Transfers data from 'weather'->'scout_labs_taps' to 'contour_locations' as well as
+     * data from 'weather'->'scout_labs_records' to 'contour_trap_counts' respectively
+     *
+     * Returns: an integer; 0 represents success, 1 represents failure
      */
-    public function handle()
+    public function handle(): int
     {
+        DB::beginTransaction(); // wrap as a transaction
 
-        //Date to compare.
+        // From Jesse's example, go back a year + 1 month
         $endDate = now()->startOfDay()->subYear()->subMonth();
         $startDate = $endDate->copy()->subDays(30);
+
+        // Format the dates
         $endDate = $endDate->format('Y-m-d H:i:s');
         $startDate = $startDate->format('Y-m-d H:i:s');
 
-        //Get Region ID
-        //        $regionId = ContourRegion::whereName('Scout Lab Traps')->value('id');
-        $regionId = DB::table('contour_regions')->whereName('Scout Lab Traps')->value('id');
-        //        dd($regionId);
+        try {
+            $regionName = $this->option('region-name') ?: 'Scout Labs';
+            $chunkSize = (int)$this->option('chunk');
 
-        if ($regionId === null) {
-            $this->error('Scout Lab Traps region not found.');
-            return Command::FAILURE;
-        }
+            $regionId = DB::table('contour_regions')
+                ->where('name', $regionName)
+                ->value('id');
 
-        //Get All Locations where contour_region_id = $regionId
-        $locations = ContourLocation::whereContourRegionId($regionId)->get('name');
-        //        $locations = DB::table('contour_locations')->where('contour_region_id', $regionId)->get('name');
-        //        dd($locations->toArray());
-
-        $allRecords = collect();
-
-        foreach ($locations as $location) {
-            //            $trapId = DB::connection('weather')->table('scout_labs_traps')->where('smapp_id', $location->name)->value('trap_id');
-            $trapId = DB::connection('weather')->table('scout_labs_traps')->where('smapp_id', $location->name)->value('id');
-            //                        dd($trapId);
-
-            //Get last 30 values for each trap.
-            $records = DB::connection('weather')->table('scout_labs_records')
-                ->where('trap_id', $trapId)
-                ->whereBetween('recorded_at', [$startDate, $endDate])
-                ->get();
-            $allRecords->push($records);
-
-            //Get the last record in Contours for each location.
-            $record = DB::table('contour_trap_counts')->where('location_id', $location->id)->orderBy('created_at', 'desc')->first();
-
-            if ($record) {
-                dd($record);
+            // check that the region was found, throw error if not
+            if (!$regionId) {
+                $this->error("Region '{$regionName}' not found in contour_regions.");
+                return Command::FAILURE;
             }
 
-            //If none exists, grab earliest from scout labs table
-            $record = DB::connection('weather')
+            // get the locations we have in contour_locations
+            $locations = DB::table('contour_locations')->where('contour_region_id', $regionId)->get('name');
+            // dd($locations); // now have 35 traps from contour_locations
+
+            $combinedRecords = collect(); // for gathering records
+
+            foreach($locations as $location) {
+                // gather all the ScoutLabs records
+                $records = DB::connection('weather')->table('scout_labs_records')
+                    ->where('trap_id', $regionId) // check for correct regionID
+                    ->whereBetween('recorded_at', [$startDate, $endDate]) // date clamping
+                    ->get();
+                $combinedRecords->push($records);
+            }
+            
+            dd($combinedRecords); // collection of the records found above
+
+            DB::connection('weather')
                 ->table('scout_labs_records')
-                ->where('trap_id', $trapId)
-                ->orderBy('recorded_at')
-                ->first();
-            //            dd($record);
-            //            dd(Carbon::parse($record->recorded_at)->dayName);
+                ->orderBy('id')
+                ->chunk($chunkSize, function ($records) {
+                    $gatheredRecords = []; // to hold transfer data
+                    foreach ($records as $record) { // for each trap record
+                        $gatheredRecords[] = [ // add counts & id
+                            'location_id' => $record->location_id,
+                            'count' => $record->count,
+                        ];
+                    }
+                });
 
-            //Get first Sunday from record.
-            $sunday = Carbon::parse($record->recorded_at)->next(CarbonInterface::SUNDAY);
+            /*
+             * INSERTION
+             * 
+            // insert trap records (aka trap counts)
+            DB::table('scout_labs_records')->insert($gatheredRecords);
+            $this->info('Finished syncing records.');
 
-            //            dd($sunday);
+            // insert the gathered trap (i.e. not records) data
+            DB::table('contour_locations')->insert($gatheredTraps);
+            $this->info('Finished syncing traps.');
 
-            //create collection to store records.
-            $records = collect();
-
-            //create while loop
-            while ($sunday < now()->startOfWeek()) {
-
-                $this->info("Getting data for week of $sunday");
-                dump('Current date: '.$sunday->format('Y-m-d H:i:s'));
-
-                $record = DB::connection('weather')
-                    ->table('scout_labs_records')
-                    ->select(['trap_id', 'recorded_at', 'detection_count'])
-                    ->where('trap_id', $trapId)
-                    ->whereBetween('recorded_at', [$sunday->copy()->subDays(7)->format('Y-m-d H:i:s'), $sunday->format('Y-m-d H:i:s')])
-                    ->orderBy('recorded_at', 'desc')
-                    ->first();
-                //SELECT trap_id, recorded_at, detection_count FROM weather.scout_lab_records
-                //WHERE trap_id = $trapId
-                //AND (recorded_at > 2025-09-07 00:00:00 AND recorded_at <  2025-09-14 00:00:00)
-                //ORDER BY record_at DESC
-                //LIMIT 1
-
-                //                                dd($record);
-
-                if (!$record) {
-                    $this->info("No record found for week of $sunday");
-                    Log::warning("SCOUTLABS: No record found for week of $sunday");
-                    $sunday = $sunday->next(CarbonInterface::SUNDAY);
-                    continue;
-                }
-
-                dump('Record Date: '.$record->recorded_at);
-
-                $records->push($record);
-
-                //Advance loop.
-                $sunday = $sunday->next(CarbonInterface::SUNDAY);
-            }
-
-            //Do something with new records.
-            dd($records->toArray());
+            DB::commit(); // everything should be ok, can commit to DB
+            */
+            return Command::SUCCESS;
+        } catch (\Exception $e) {
+            DB::rollBack(); // error occurred, do not commit to DB
+            $this->error("Sync failed: " . $e->getMessage());
+            Log::error("Scout Labs sync error", ['exception' => $e]);
+            return Command::FAILURE;
         }
     }
 }
