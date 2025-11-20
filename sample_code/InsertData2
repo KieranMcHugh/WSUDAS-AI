@@ -35,6 +35,12 @@ class DataTransfer extends Command
         $startDate = $startDate->format('Y-m-d H:i:s');
 
         try {
+            // get the model's id from model_cards (currently just for NOW)
+            $modelCardId = DB::table('model_cards')
+                ->where('code', 'NOW') // search for Navel Orangeworm
+                ->where('country', 'US') // only get results in the U.S.
+                ->first()->id; // get the id of the matching result
+
             $regionName = $this->option('region-name') ?: 'Scout Labs';
             $chunkSize = (int)$this->option('chunk');
 
@@ -74,7 +80,7 @@ class DataTransfer extends Command
 
             // insert trap records (aka trap counts)
             // need to convert dates to sundays
-            // need to transfer model_id for NOW for U.S. data
+            // need to transfer model_id for NOW (for U.S. data specifically)
             // location_id in contour_trap_counts directly relates to contour_locations' id
             // get ID from contour_locations using collection key (aka name)
             // create a new collection, can then insert
