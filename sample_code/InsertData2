@@ -54,43 +54,38 @@ class DataTransfer extends Command
 
             $combinedRecords = collect(); // for gathering records
 
+            // TODO: when creating collection, location name should be key to collection
+
             foreach($locations as $location) {
                 // gather all the ScoutLabs records
+                $trap = DB::connection('weather')->table('scout_labs_traps')
+                    ->where('smapp_id', $location->name)
+                    ->first();
+
                 $records = DB::connection('weather')->table('scout_labs_records')
-                    ->where('trap_id', $regionId) // check for correct regionID
+                    ->where('trap_id', $trap->id) // check for correct regionID
                     ->whereBetween('recorded_at', [$startDate, $endDate]) // date clamping
                     ->get();
+                //dd($records); // collection of the records found above
                 $combinedRecords->push($records);
             }
-            
+
             dd($combinedRecords); // collection of the records found above
 
-            DB::connection('weather')
-                ->table('scout_labs_records')
-                ->orderBy('id')
-                ->chunk($chunkSize, function ($records) {
-                    $gatheredRecords = []; // to hold transfer data
-                    foreach ($records as $record) { // for each trap record
-                        $gatheredRecords[] = [ // add counts & id
-                            'location_id' => $record->location_id,
-                            'count' => $record->count,
-                        ];
-                    }
-                });
-
-            /*
-             * INSERTION
-             * 
             // insert trap records (aka trap counts)
-            DB::table('scout_labs_records')->insert($gatheredRecords);
+            // need to convert dates to sundays
+            // need to transfer model_id for NOW for U.S. data
+            // location_id in contour_trap_counts directly relates to contour_locations' id
+            // get ID from contour_locations using collection key (aka name)
+            // create a new collection, can then insert
+            // can do that as a bulk insert once it is an array (using toArray())
+
+
+            // DB::table('contour_trap_counts')->insert();
             $this->info('Finished syncing records.');
 
-            // insert the gathered trap (i.e. not records) data
-            DB::table('contour_locations')->insert($gatheredTraps);
-            $this->info('Finished syncing traps.');
-
             DB::commit(); // everything should be ok, can commit to DB
-            */
+
             return Command::SUCCESS;
         } catch (\Exception $e) {
             DB::rollBack(); // error occurred, do not commit to DB
