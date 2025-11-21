@@ -36,10 +36,11 @@ class DataTransfer extends Command
 
         try {
             // get the model's id from model_cards (currently just for NOW)
+            // TODO: Do not hardcode to Navel Orangeworm?
             $modelCardId = DB::table('model_cards')
                 ->where('code', 'NOW') // search for Navel Orangeworm
                 ->where('country', 'US') // only get results in the U.S.
-                ->first()->id; // get the id of the matching result
+                ->first()->id; // get the pest's id
 
             $regionName = $this->option('region-name') ?: 'Scout Labs';
             $chunkSize = (int)$this->option('chunk');
@@ -54,7 +55,7 @@ class DataTransfer extends Command
                 return Command::FAILURE;
             }
 
-            // get the locations we have in contour_locations
+            // gets all of the smapp_ids stored in contour_locations
             $locations = DB::table('contour_locations')->where('contour_region_id', $regionId)->get('name');
             // dd($locations); // now have 35 traps from contour_locations
 
@@ -63,7 +64,7 @@ class DataTransfer extends Command
             // TODO: when creating collection, location name should be key to collection
 
             foreach($locations as $location) {
-                // gather all the ScoutLabs records
+                // for each ScoutLabs record
                 $trap = DB::connection('weather')->table('scout_labs_traps')
                     ->where('smapp_id', $location->name)
                     ->first();
@@ -72,6 +73,7 @@ class DataTransfer extends Command
                     ->where('trap_id', $trap->id) // check for correct regionID
                     ->whereBetween('recorded_at', [$startDate, $endDate]) // date clamping
                     ->get();
+
                 //dd($records); // collection of the records found above
                 $combinedRecords->push($records);
             }
