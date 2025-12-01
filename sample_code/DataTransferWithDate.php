@@ -1,0 +1,156 @@
+<?php
+
+namespace App\Console\Commands;
+
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class DataTransfer extends Command
+{
+
+    protected $signature = 'sync:data
+                            {--region-name=Scout Labs : Region name in contour_regions table}
+                            {--chunk=500 : Number of records to process per chunk}';
+
+    protected $description = 'Sync data from Scout Labs tables (scout_labs_traps, scout_labs_records) to Contour tables (contour_locations, contour_trap_counts)';
+
+    /*
+     * Transfers data from 'weather'->'scout_labs_taps' to 'contour_locations' as well as
+     * data from 'weather'->'scout_labs_records' to 'contour_trap_counts' respectively
+     *
+     * Returns: an integer; 0 represents success, 1 represents failure
+     */
+    public function handle(): int
+    {
+        DB::beginTransaction(); // wrap as a transaction
+
+        // From Jesse's example, go back a year + 1 month
+        $endDate = now()->startOfDay();
+        $startDate = $endDate->copy()->subYear()->subMonth()->next(CarbonInterface::SUNDAY);
+        $startDate = $startDate->subDays(7);
+
+        // Format the dates above
+        $endDate = $endDate->format('Y-m-d H:i:s');
+        $startDate = $startDate->format('Y-m-d H:i:s');
+
+        try {
+            // get the model's id from model_cards (currently just for NOW)
+            // TODO: Do not hardcode to Navel Orangeworm?
+            $pestName = DB::table('model_cards')
+                ->where('code', 'NOW') // search for Navel Orangeworm
+                ->where('country', 'US') // only get results in the U.S.
+                ->first()->name; // get the pest's name
+
+            $pestID = DB::table('model_cards')
+                ->where('code', 'NOW') // search for Navel Orangeworm
+                ->where('country', 'US') // only get results in the U.S.
+                ->first()->id; // get the pest's name
+
+            // TODO: Ugly workaround, should change
+            if ($pestName == "Navel Orangeworm")
+            {
+                $pestName = 'Amyelois transitella - Navel Orangeworm';
+            }
+
+            $regionName = $this->option('region-name') ?: 'Scout Labs';
+            $chunkSize = (int)$this->option('chunk');
+
+            $regionId = DB::table('contour_regions')
+                ->where('name', $regionName)
+                ->value('id');
+
+            // check that the region was found, throw error if not
+            if (!$regionId) {
+                $this->error("Region '{$regionName}' not found in contour_regions.");
+                return Command::FAILURE;
+            }
+
+            // sync models->contour_locations
+            DB::connection('weather')
+                ->table('scout_labs_traps')
+                ->orderBy('id')
+                ->chunk(500, function ($trapLocations) use ($regionId) {
+                    foreach ($trapLocations as $trapLocation) {
+                        DB::table('contour_locations')->Insert(
+                            [
+                                // pass needed values
+                                'name' => $trapLocation->smapp_id,
+                                'contour_region_id' => $regionId,
+                                'lat' => $trapLocation->lat,
+                                'lng' => $trapLocation->lng,
+                                'created_at' => $trapLocation->created_at,
+                                'updated_at' => $trapLocation->updated_at,
+                            ]
+                        );
+                    }
+                });
+
+            // gets all the smapp_ids stored in contour_locations
+            $locations = DB::table('contour_locations')->where('contour_region_id', $regionId)->get('name');
+            // dd($locations); // now have 35 traps from contour_locations
+
+            $combinedRecords = collect(); // for gathering records
+
+            foreach($locations as $location) {
+                // for each ScoutLabs record
+                $trap = DB::connection('weather')->table('scout_labs_traps')
+                    ->where('smapp_id', $location->name)
+                    ->first();
+
+                $startDateCarbon = Carbon::parse($startDate);
+                $endDateCarbon = Carbon::parse($endDate);
+
+                while ($startDateCarbon->lte($endDateCarbon)) {
+                $endOfWeek = $startDateCarbon->copy()->addDays(6);
+                $records = DB::connection('weather')->table('scout_labs_records')
+                    ->where('trap_id', $trap->id) // check for correct regionID
+                    ->where('pest_name', $pestName) // check for correct pest
+                    ->whereBetween('recorded_at', [$startDateCarbon, $endOfWeek]) // date clamping
+                    ->orderBy('recorded_at', 'desc')
+                    ->first();
+                $combinedRecords->push($records);
+                $startDateCarbon->addWeek();
+                }
+            }
+
+            foreach($combinedRecords as $regionRecord) {
+                foreach($regionRecord as $trapRecord) {
+                    DB::table('contour_trap_counts')->insert([
+                        'location_id' => $trapRecord->trap_id,
+                        'model_id' => $pestID,
+                        'created_at' => $trapRecord->created_at,
+                        'updated_at' => $trapRecord->updated_at,
+                        'trap_count' => $trapRecord->detection_count,
+                        'survey_date' => Carbon::parse($trapRecord->recorded_at)->next(CarbonInterface::SUNDAY)->format('Y-m-d H:i:s'),
+                    ]);
+                }
+            }
+
+            /*
+            Notes from 11/19:
+            - insert trap records (aka trap counts)
+            - need to convert dates to sundays
+            - need to transfer model_id for NOW (for U.S. data specifically)
+            - location_id in contour_trap_counts directly relates to contour_locations' id
+            - get ID from contour_locations using collection key (aka name)
+            - create a new collection, can then insert
+            - can do that as a bulk insert once it is an array (using toArray())
+            */
+
+            // DB::table('contour_trap_counts')->insert();
+            $this->info('Finished syncing records.');
+
+            DB::commit(); // everything should be ok, can commit to DB
+
+            return Command::SUCCESS;
+        } catch (\Exception $e) {
+            DB::rollBack(); // error occurred, do not commit to DB
+            $this->error("Sync failed: " . $e->getMessage());
+            Log::error("Scout Labs sync error", ['exception' => $e]);
+            return Command::FAILURE;
+        }
+    }
+}
