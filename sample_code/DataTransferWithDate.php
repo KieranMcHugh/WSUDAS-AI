@@ -74,7 +74,10 @@ class DataTransfer extends Command
                 ->orderBy('id')
                 ->chunk(500, function ($trapLocations) use ($regionId) {
                     foreach ($trapLocations as $trapLocation) {
-                        DB::table('contour_locations')->Insert(
+                        DB::table('contour_locations')->updateOrInsert(
+                            [
+                                'name' => $trapLocation->smapp_id // key to prevent duplicates
+                            ],
                             [
                                 // pass needed values
                                 'name' => $trapLocation->smapp_id,
