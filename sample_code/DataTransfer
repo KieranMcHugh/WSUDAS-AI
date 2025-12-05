@@ -110,17 +110,29 @@ class DataTransfer extends Command
                 $combinedRecords->push($records);
             }
 
-            foreach($combinedRecords as $regionRecord) {
-                foreach($regionRecord as $trapRecord) {
-                    DB::table('contour_trap_counts')->insert([
-                        'location_id' => $trapRecord->trap_id,
-                        'model_id' => $pestID,
-                        'created_at' => $trapRecord->created_at,
+            $newRecords = $combinedRecords->flatten();
+            $groupedByWeek = $newRecords->groupBy(function ($record) {
+                $sundayDate = Carbon::parse($record->recorded_at)
+                    ->next(CarbonInterface::SUNDAY)
+                    ->format('Y-m-d');
+                return $record->trap_id . '_' . $sundayDate;
+            });
+
+            $filteredRecords = $groupedByWeek->map(function ($weekRecords) {
+                return $weekRecords->sortByDesc('recorded_at')->first();
+            })->filter();
+
+            foreach($filteredRecords as $trapRecord) {
+                DB::table('contour_trap_counts')->UpdateOrInsert([
+                    'location_id' => $trapRecord->trap_id,
+                    'model_id' => $pestID,
+                    'survey_date' => Carbon::parse($trapRecord->recorded_at)->next(CarbonInterface::SUNDAY)->format('Y-m-d H:i:s'),
+                ],
+                    ['created_at' => $trapRecord->created_at,
                         'updated_at' => $trapRecord->updated_at,
-                        'trap_count' => $trapRecord->detection_count,
-                        'survey_date' => Carbon::parse($trapRecord->recorded_at)->next(CarbonInterface::SUNDAY)->format('Y-m-d H:i:s'),
-                    ]);
-                }
+                        'trap_count' => $trapRecord->detection_count
+                    ]
+                );
             }
 
             /*
