@@ -1,0 +1,16 @@
+For weekly filtering:
+
+filter everything
+step thru every week
+should have 6-7 data points
+
+grab the last value from that week range
+
+data from Monday is null if we have data from Tuesday
+should not updateOrInsert() for trap_counts
+
+move forward a week, grab last record
+
+get first date we have record entry for for that trap
+
+if no data in that time period, skip it
