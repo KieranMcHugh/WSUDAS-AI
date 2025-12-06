@@ -1,0 +1,18 @@
+generate contours:
+php artisan contours:create --on_day=friday --model_id=11
+
+to make pretty for demo: make start date the beginning of the year
+
+correct way:
+
+go back and find earliest record
+
+For Wednesday:
+
+polish
+
+do a dry run
+
+demo to dave
+
+note: numbers are a little scuffed, due to scoutlabs
