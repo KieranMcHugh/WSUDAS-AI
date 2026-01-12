@@ -1,0 +1,15 @@
+changes needed from last semester:
+
+need to grab last active date for trap instead of arbitrary date
+
+if there is not a record then use fallback date for 1 year
+
+
+
+look at record on the contour table
+
+if record does not exist, go back to start of the year
+
+otherwise use sliding window of record as start date (i.e. go to next sunday 2026-01-04 -> 2026-01-11 (sample dates))
+
+since it's updating every week pulling in 1 item at a time
