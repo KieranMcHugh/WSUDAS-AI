@@ -102,25 +102,22 @@ class DataTransfer extends Command
                     ->first();
 
                 $active = DB::table('contour_trap_counts')
-                    ->where('location_id', $trap->id)
+                    ->where('location_id' == $trap->id)
                     ->orderBy('survey_date', 'desc')
                     ->first();
                 $date = Carbon::parse($active->survey_date);
                 if($active) {
-                    $records = DB::connection('weather')->table('scout_labs_records')
-                        ->where('trap_id', $trap->id) // check for correct regionID
-                        ->where('pest_name', $pestName) // check for correct pest
-                        ->whereBetween('recorded_at',[$date, $endDate]) // date clamping
-                        ->get();
+                    $newestRecordDate = $date;
                 }
                 else
                 {
-                    $records = DB::connection('weather')->table('scout_labs_records')
-                        ->where('trap_id', $trap->id) // check for correct regionID
-                        ->where('pest_name', $pestName) // check for correct pest
-                        ->whereBetween('recorded_at', [$startDate, $endDate]) // date clamping
-                        ->get();
+                    $newestRecordDate = $startDate;
                 }
+                $records = DB::connection('weather')->table('scout_labs_records')
+                    ->where('trap_id', $trap->id)
+                    ->where('pest_name', $pestName)
+                    ->whereBetween('recorded_at', [$newestRecordDate, $endDate])
+                    ->get();
 
                 $combinedRecords->push($records);
             }
@@ -167,3 +164,4 @@ class DataTransfer extends Command
         }
     }
 }
+
