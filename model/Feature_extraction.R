@@ -9,6 +9,8 @@ setwd("~/NYUS.2/Raw data processing and feature extraction")
 install.packages("devtools")
 devtools::install_github("https://github.com/EduardoFernandezC/dormancyR")
 
+# Repo Link: https://github.com/imbaterry11/NYUS.2
+
 
 
 require(dplyr)                                    
