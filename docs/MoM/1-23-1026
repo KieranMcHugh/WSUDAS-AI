@@ -1,0 +1,23 @@
+run all of the models at once
+
+trim down to best models
+
+push data thru the best models
+
+choose the one giving most realistic data
+
+use that model going forward
+
+
+
+end goal: going to run weather data through this model
+
+see what data we get back from coldheartiness
+
+
+
+apply this to grapes being grown in BC, specifically using coldheartiness models
+
+how hard would it be to push our data thru it and get data out?
+
+ultimate end goal: being able to push live weather data from DAS stations to the model and look at the results
