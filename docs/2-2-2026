@@ -1,0 +1,17 @@
+daily temp data in input csv
+
+take station
+
+grab 30 days of data, maybe 14 days of forecasted data
+
+run thru system to calculate the min and max for each day
+
+put thru r script, take result and run it thru the training (autogluon)\
+
+For this week:
+
+How can we look at what the model itself does?
+
+Need to understand how this model actually works
+
+Looking at pikl files and get access to the underlying model itself
