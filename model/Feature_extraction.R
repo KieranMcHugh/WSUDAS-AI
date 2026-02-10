@@ -41,7 +41,12 @@ cultivars_to_choose_from = gsub('Cultivar.','',Cultivars)
 
 #Load a demo raw temperature file
 #The demo temperature file includes three columns: one date column, one max daily temperature column and one min daily temperature column
+
+# DEFAULT INPUT:
 all_data = read_csv('daily_temperature_data_example.csv')
+# FOR BC INPUT:
+#all_data = read_csv('bc-weather-data.csv')
+
 all_data$tmax = as.numeric(all_data$tmax)
 all_data$tmin = as.numeric(all_data$tmin)
 
@@ -60,10 +65,11 @@ all_data$Tmin = fahrenheit.to.celsius(all_data$Tmin)
 ###Functions
 
 #inverse_EWA is the function to compute REWMA temperatures
+# makes the most recent observations influence earlier dates
 inverse_EWA = function(datalist,window=10){
   datalist_rev = rev(datalist)
-  datalist_rev_EWA = movavg(datalist_rev,n = window,type = 'e')
-  datalist_EWA = rev(datalist_rev_EWA)
+  datalist_rev_EWA = movavg(datalist_rev,n = window,type = 'e') # exponentially weighted average with the window size above
+  datalist_EWA = rev(datalist_rev_EWA) # reversing aligns REWMA values with original dates
   datalist_EWA = c(rep(NA,window), datalist_EWA)
   datalist_EWA = datalist_EWA[1:length(datalist)]
   return(datalist_EWA)
@@ -78,21 +84,22 @@ inverse_EWA = function(datalist,window=10){
 Weather_feature_generation = function(df,latitude = 43.00, cultivar = 'Riesling'){
   
   #Data filtering to exclude NAs and outliers
-  df$date <- as.Date(df$date)
+  df$date <- as.Date(df$date) # orders data chronologically
   df <- df %>% 
     arrange(date)
   
-  df = filter(df, !is.na(Tmin), !is.na(Tmax))
+  df = filter(df, !is.na(Tmin), !is.na(Tmax)) # remove missing temperature records
   df$Year <- as.numeric(format(df$date, format = "%Y"))
   df$Month <-  as.numeric(format(df$date, format = "%m"))
   df$Day <-  as.numeric(format(df$date, format = "%d"))
-  df <- filter(df, Month %in% c(1,2,3,4,8,9,10,11,12))
+  df <- filter(df, Month %in% c(1,2,3,4,8,9,10,11,12)) # removes months may, june, july
   df <-df %>%
     group_by(Year) %>%
     mutate(ind = sum(is.na(Tmin))) %>%
     group_by(Year) %>%
     filter(!any(ind >= 10)) %>%
     select(-ind)
+  # removes values considered "impossible"
   df <- filter(df, !is.na(Tmax) | is.na(Tmin), !is.na(Tmax) & !is.na(Tmin),!Tmax > 100, !Tmin < -100, !Tmin > Tmax)
   
   ##If the input df have fewer than 20 row left after filtering, the feature extraction could not be accomplished
@@ -116,16 +123,20 @@ Weather_feature_generation = function(df,latitude = 43.00, cultivar = 'Riesling'
     
     
     #Chilling models computation
+    # all of these are based on different boilogical theories of chilling
     CU <- chilling_units(data_all_hourly$Temp, summ = F)
     Utah<- modified_utah_model(data_all_hourly$Temp, summ = F)
     NC<-north_carolina_model(data_all_hourly$Temp, summ = F)
+    # heat accumulation above base temperatures
+    # only counted in Jan-Apr?
+    # shows a loss of chold hardiness
     GDH_10 <- GDH_linear(data_all_hourly_1, Tb = 10, Topt = 25, Tcrit = 36)
     GDH_7 <- GDH_linear(data_all_hourly_1, Tb = 7, Topt = 25, Tcrit = 36)
     GDH_4 <- GDH_linear(data_all_hourly_1, Tb = 4, Topt = 25, Tcrit = 36)
     GDH_0 <- GDH_linear(data_all_hourly_1, Tb = 0, Topt = 25, Tcrit = 36)
     DP <- Dynamic_Model(data_all_hourly$Temp, summ = F)
     
-    
+    # negative chilling forced to 0
     CU = if_else(CU < 0, 0, CU)
     Utah = if_else(Utah < 0, 0 ,Utah)
     NC = if_else(NC < 0,0, NC)
@@ -218,6 +229,8 @@ Weather_feature_generation = function(df,latitude = 43.00, cultivar = 'Riesling'
         Year = mean(Year),
         Month = mean(Month),
         Day = mean(Day),
+        # minimum temps drive freeze damage
+        # mean & median capture sustained thermal exposure
         min_temp = min(Temp),
         max_temp = max(Temp),
         within_day_range_temp = max(Temp) - min(Temp),
@@ -230,6 +243,7 @@ Weather_feature_generation = function(df,latitude = 43.00, cultivar = 'Riesling'
     
     #min
     min_data_number = length(inverse_EWA(data_all_daily_T$min_temp, window = window_size[2]))
+    # gets upcoming warm spells, forward thermal stresses, and freeze risk modeling
     min_REWA = data.frame(NA_col = rep(NA, min_data_number))
     for (i in 1:length(window_size)) {
       vname = print(paste0('min_REWMA_',window_size[i],"day"))
@@ -268,12 +282,15 @@ Weather_feature_generation = function(df,latitude = 43.00, cultivar = 'Riesling'
     
     #min
     min_data_number = length(movavg(data_all_daily_T$min_temp, n = window_size[2],type = 'e'))
+    # gets how long cold exposure has persisted
     min_EWA = data.frame(NA_col = rep(NA, min_data_number))
     for (i in 1:length(window_size)) {
       vname = print(paste0('min_EWMA_',window_size[i],"day"))
       min_EWA[,i] = movavg(data_all_daily_T$min_temp, n = window_size[i],type = 'e')
       colnames(min_EWA)[i] = vname
     }
+    
+    # both EWMA and REWMA model acclimation vs deacclimation balance
     
     
     #max
@@ -299,6 +316,8 @@ Weather_feature_generation = function(df,latitude = 43.00, cultivar = 'Riesling'
     
     
     #Output
+    # gives daily temps, chilling accumulation, heat accumulation, EWMA + REWMA
+    # removes august
     df_out = merge(data_all_daily_T, cumulative_feature_summary_daily, by = c('date'))
     df_out = data.frame(df_out,
                         min_EWA,
@@ -342,6 +361,8 @@ Weather_feature_generation = function(df,latitude = 43.00, cultivar = 'Riesling'
 cultivars_to_choose_from
 all_data_feature_extracted <- Weather_feature_generation(all_data,latitude = 43.0606, cultivar = 'Riesling')
 
+# DEFAULT OUTPUT:
 write_csv(all_data_feature_extracted, file = 'daily_temperature_data_example_feature_extracted.csv')
 
-
+# FOR BC DATA:
+#write_csv(all_data_feature_extracted, file = 'bc_daily_temperature_data_example_feature_extracted.csv')
