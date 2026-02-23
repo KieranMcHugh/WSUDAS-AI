@@ -1,0 +1,11 @@
+can create container with just python 3.11 installed and see if rpy2 works
+
+Kieran: keep working assuming rpy2 doesn't work
+
+Son: change json file to csv file
+
+see if it complains about missing r dependencies
+
+go to package repo 
+
+could also try to reverse engineer as a nuclear option
