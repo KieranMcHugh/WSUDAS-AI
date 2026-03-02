@@ -1,0 +1,30 @@
+- sending a json object thru as opposed to a csv file
+
+- Rjson as opposed to panda readJson on python
+
+- python profiling
+
+- combine efforts into single end-to-end process
+
+- turn it all into one file
+
+- take json file, transform thru Kieran's program, the hand off to son, all of that in one file
+
+- could also: create a service, both son and Kieran's files are in system, service goes thru Kieran's then son's
+
+- get a traefik container for r an python to move this into our stack
+
+- python profiling, service container, traefik container (possibly)
+
+for python profiling: https://docs.python.org/3/library/profile.html
+
+- service container good because we only have to worry about 1 endpoint
+
+- could be out of the box python image for traefik
+
+#%%
+import orjson
+with open("daily_temperature_data_example_feature_extracted.json", "rb") as f:
+    data = orjson.loads(f.read())
+
+df1 = pd.json_normalize(data)
