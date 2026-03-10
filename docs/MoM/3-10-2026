@@ -1,0 +1,15 @@
+do requirements.txt, make sure all pcakages are included
+
+if coming from different repo (i.e. not pip install), might have to do something else to install it, otherwise put in requirements.txt
+
+go to dockerfile, start @ line 15, install every r package for project, just do a new line
+
+run r script -e, etc
+
+line 5, put each on new line put single slash \
+
+all packages needed for python3 and R
+
+from there update docker compose by mapping the volume
+
+just have to add packages for R
