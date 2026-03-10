@@ -20,4 +20,4 @@ Sprint 4:
 Exploring viability of NYUS model
 
 Sprint 5:
-Integration og NYUS model into WSUDAS' services
+Integration of NYUS model into WSUDAS' services
