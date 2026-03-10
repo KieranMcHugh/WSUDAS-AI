@@ -37,7 +37,14 @@ def ewma(series, window):
 def inverse_ewa(series, window=10):
     reversed_series = series[::-1]
     ewa = ewma(reversed_series, window)
-    return ewa[::-1]
+    result = ewa[::-1]
+
+    # prepend `window` NAs, trim to original length
+    na_prefix = pd.Series([np.nan] * window)
+    result = pd.concat([na_prefix, result], ignore_index=True)
+    result = result.iloc[:len(series)]
+    result.index = series.index
+    return result
 
 # needs: ['Year','Month','Day','Hour','Temp','date', 'DOY'] passed thru
 # returns chilling output & gdh dataframes
@@ -342,6 +349,6 @@ def main():
         cultivars_list=cultivars_to_choose_from
     )
 
-    features.to_csv("daily_temperature_data_example_feature_extracted.csv", index=False)
+    features.to_csv("daily_temperature_data_example_feature_extracted2.csv", index=False)
 
 main() # runs Weather_feature_gen
