@@ -12,3 +12,12 @@ System setup & learning
 
 Sprint 2:
 Scoutlabs data integration & transfer
+
+Sprint 3:
+Finalization & refinement of last sprint's work
+
+Sprint 4:
+Exploring viability of NYUS model
+
+Sprint 5:
+Integration og NYUS model into WSUDAS' services
