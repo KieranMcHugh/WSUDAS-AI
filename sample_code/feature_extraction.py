@@ -51,7 +51,7 @@ def inverse_ewa(series, window=10):
 def run_r_models(hourly_df):
     # use localconverter to handle datetime
     with localconverter(default_converter + pandas2ri.converter):
-        r_df = pandas2ri.py2rpy(hourly_df)
+        r_df = ro.conversion.py2rpy(hourly_df)
 
     ro.globalenv['data_all_hourly'] = r_df
 
