@@ -8,33 +8,21 @@ from rpy2.robjects import default_converter
 from rpy2.robjects.conversion import localconverter
 from rpy2.robjects import pandas2ri
 
-# install R libraries if not already installed, I set it to install everything (probably not desirable)
-ro.r("""
-    require(dplyr)
-    require(readr)
-    require(tidyverse)
-    require(ggpubr)
-    require(wesanderson)
-    require(pracma)
-    require(data.table)
-    require(weathermetrics)
-    require(measurements)
-    require(naniar)
-    require(ggplot2)
-    require(ggpubr)
-    require(dormancyR)
-    require(chron)
-    require(ggrepel)
-    require(geosphere)
-    require(chillR)
-    require(lubridate)
-    require(caret)
-    require(fruclimadapt)
+def install_R_libs():
+    # install R libraries if not already installed, I set it to install everything (probably not desirable)
+    ro.r("""
+        require(ggpubr)
+        require(data.table)
+        require(weathermetrics)
+        require(ggpubr)
+        require(dormancyR)
+        require(chron)
+        require(chillR)
 
-if (!require(chillR)) {
-    install.packages("chillR", dependencies = TRUE, repos = "https://cloud.r-project.org", quiet = TRUE, Ncpus = 1)
-}
-""")
+    if (!require(chillR)) {
+        install.packages("chillR", dependencies = TRUE, repos = "https://cloud.r-project.org", quiet = TRUE, Ncpus = 1)
+    }
+    """)
 
 # helper function to convert fahrenheit to celsius
 def fahrenheit_to_celsius(temp_f):
@@ -53,7 +41,7 @@ def inverse_ewa(series, window=10):
 
 # needs: ['Year','Month','Day','Hour','Temp','date', 'DOY'] passed thru
 # returns chilling output & gdh dataframes
-def _run_r_models(hourly_df):
+def run_r_models(hourly_df):
     # use localconverter to handle datetime
     with localconverter(default_converter + pandas2ri.converter):
         r_df = pandas2ri.py2rpy(hourly_df)
@@ -78,10 +66,16 @@ def _run_r_models(hourly_df):
                                         Hour = data_all_hourly$Hour,
                                         Temp = data_all_hourly$Temp)
 
-        GDH_10_res <- GDH_linear(data_all_hourly_1, Tb = 10, Topt = 25, Tcrit = 36)
-        GDH_7_res <- GDH_linear(data_all_hourly_1, Tb = 7, Topt = 25, Tcrit = 36)
-        GDH_4_res <- GDH_linear(data_all_hourly_1, Tb = 4, Topt = 25, Tcrit = 36)
-        GDH_0_res <- GDH_linear(data_all_hourly_1, Tb = 0, Topt = 25, Tcrit = 36)
+    GDH_10_res <- GDH_linear(data_all_hourly_1, Tb = 10, Topt = 25, Tcrit = 36)
+    GDH_7_res  <- GDH_linear(data_all_hourly_1, Tb = 7,  Topt = 25, Tcrit = 36)
+    GDH_4_res  <- GDH_linear(data_all_hourly_1, Tb = 4,  Topt = 25, Tcrit = 36)
+    GDH_0_res  <- GDH_linear(data_all_hourly_1, Tb = 0,  Topt = 25, Tcrit = 36)
+
+    # convert Date column to character so rpy2 doesn't mangle it (thru type conversion)
+    GDH_10_res$Date <- as.character(GDH_10_res$Date)
+    GDH_7_res$Date  <- as.character(GDH_7_res$Date)
+    GDH_4_res$Date  <- as.character(GDH_4_res$Date)
+    GDH_0_res$Date  <- as.character(GDH_0_res$Date)
     """)
     # end of R code
 
@@ -131,7 +125,7 @@ def Weather_feature_generation(df, latitude=43.0, cultivar='Riesling', cultivars
 
     df = df.copy()
 
-    # FORCE SAFE DTYPES HERE
+    # force safe types
     df['Tmin'] = df['Tmin'].astype(float)
     df['Tmax'] = df['Tmax'].astype(float)
     df['date'] = pd.to_datetime(df['date'])
@@ -170,7 +164,7 @@ def Weather_feature_generation(df, latitude=43.0, cultivar='Riesling', cultivars
     hourly['DOY'] = hourly['date'].dt.dayofyear # add DOY for GDH_linear R function (later)
 
     # chilling and GDH models with rpy2 - raw hourly values
-    CU_raw, Utah_raw, NC_raw, DP_raw, GDH_10_df, GDH_7_df, GDH_4_df, GDH_0_df = _run_r_models(hourly)
+    CU_raw, Utah_raw, NC_raw, DP_raw, GDH_10_df, GDH_7_df, GDH_4_df, GDH_0_df = run_r_models(hourly)
 
     # set raw chilling values to hourly
     hourly['CU_raw'] = CU_raw
@@ -182,8 +176,11 @@ def Weather_feature_generation(df, latitude=43.0, cultivar='Riesling', cultivars
     # each GDH contains ['Date', 'Year', 'Month', 'Day', 'DOY', 'GDH']
     GDH_dfs = {'GDH_10': GDH_10_df, 'GDH_7': GDH_7_df, 'GDH_4': GDH_4_df, 'GDH_0': GDH_0_df}
     for key, gdh_df in GDH_dfs.items():
-        gdh_df['Date'] = pd.to_datetime(gdh_df['Date']) # again, check that Date is datetime
-        gdh_df['Date'] = gdh_df['Date'].dt.tz_localize(None) # normalize to timezone-naive
+        if pd.api.types.is_integer_dtype(gdh_df['Date']) or pd.api.types.is_float_dtype(gdh_df['Date']):
+            gdh_df['Date'] = pd.to_datetime(gdh_df['Date'], unit='D', origin='1970-01-01')
+        else:
+            gdh_df['Date'] = pd.to_datetime(gdh_df['Date'])
+        gdh_df['Date'] = gdh_df['Date'].dt.normalize()  # ensure midnight, no time component
         gdh_df['Month'] = gdh_df['Date'].dt.month # add month for filtering
         gdh_df.rename(columns={'GDH': f'{key}_raw_daily'}, inplace=True) # rename GDH column (for output csv)
 
@@ -306,6 +303,8 @@ def Weather_feature_generation(df, latitude=43.0, cultivar='Riesling', cultivars
     return df_out[final_columns]
 
 def main():
+    install_R_libs()  # loads all the necessary R libraries
+
     # load & read the temperature file w/ pandas
     all_data = pd.read_csv("daily_temperature_data_example.csv")
 
@@ -343,6 +342,6 @@ def main():
         cultivars_list=cultivars_to_choose_from
     )
 
-    features.to_csv("test_daily_temperature_data_example_feature_extracted.csv", index=False)
+    features.to_csv("daily_temperature_data_example_feature_extracted.csv", index=False)
 
 main() # runs Weather_feature_gen
