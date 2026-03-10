@@ -349,6 +349,6 @@ def main():
         cultivars_list=cultivars_to_choose_from
     )
 
-    features.to_csv("daily_temperature_data_example_feature_extracted2.csv", index=False)
+    features.to_csv("daily_temperature_data_example_feature_extracted.csv", index=False)
 
 main() # runs Weather_feature_gen
