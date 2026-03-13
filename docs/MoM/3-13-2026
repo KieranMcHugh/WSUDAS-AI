@@ -1,0 +1,5 @@
+send sample data thru normally & test that outputs are correct
+
+try running decoupled from docker
+
+run sample extracted file from the github thru the lt50 in docker, make sure lt50 data from that is correct
