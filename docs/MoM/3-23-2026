@@ -1,0 +1,37 @@
+take subset of 30 days and compare between two systems
+
+Jesse may not be at Friday's meeting
+
+need to implement php side of things
+
+build out lt50 model, calls api with 30 day date range
+
+will make a command
+
+will build frontend if possible, put data into table if not
+
+create command that pulls data in and puts it into the api
+
+will want to do this from the models service
+
+familiarize self with DasModels class and how it works
+
+look at update method, forecast, overall structure
+
+model will extend from this, will have model record & model card
+
+will then create command that updates methid, then move that from command line into update function
+
+will mimic other functions in this folder
+
+recap: will build command line first, then will create the update function
+
+build something like weather app->apis and mimic something like that in models
+
+START WITH:
+
+focus on apis in weather service -> look at how apis are built under weather
+
+-> create environment variable for lt50
+
+build out structure of response, go from there
