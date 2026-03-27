@@ -1,0 +1,39 @@
+grabs weather data, pushes thru model, stores for website to look it up
+
+replicating that but we are using the api to push weather data
+
+instead of having middle grounf to run model we push to the api and get data back
+
+chunk dates to every month or every year
+
+push to api, get back from api, then push up to the database
+
+-- walkthrough
+
+some have data, some need data supplied
+
+update:
+
+to = today
+
+now = today's date
+
+everything now & before = historical
+
+everything after = forecast
+
+if there's a forecasted date 42 days from now, will grab forecasted date, then does update function
+
+anything below or above certain temps does not get counted when calculating the degree days (42 & 77 for grape(?))
+
+make "glt50_records"
+
+updateChunk is where the API call will happen
+
+need some way to validate data is legit, then save calculations (i.e. push into updateRecords function where the record is "lt50" => 8.3 degrees)
+
+will probably have to do something like: pluck['tstamp', 'min', 'max']->toArray()
+
+where to start: make sure we can run command -> we need to create api, create command that hits api, run thru and test, then build model around that
+
+TODO: Create command that will call data, demo it next Friday, go back to models afterwards
