@@ -1,0 +1,30 @@
+Some Backstory:
+
+UC Riverside partnership - gave California money to get models for treenuts & treenut pests
+
+Dev team for California got axed, no dev team to build the tooling out
+
+DAS partnered since they were already building out models, DAS built out treenut   -------->   https://treenuts.decisionaid.systems/
+
+NOW model for UC, no treenuts in Washington - signed contract with them
+
+Over the winter UC decided they didn't need it anymore, then last Tuesday they said they needed it again
+
+
+
+Refresh config:
+config cache/clear
+
+
+
+
+
+next week send repo link for lt50 api endpoint
+
+check that we can access staging website (so we can demo)
+
+ideally next week is all polish, then we demo for the expo
+
+link:
+
+https://staging.treenuts.decisionaid.systems/profile/contour-maps/now
