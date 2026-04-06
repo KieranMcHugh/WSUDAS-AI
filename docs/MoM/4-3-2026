@@ -1,0 +1,25 @@
+make command that takes weather data
+
+have an update station job, don't want to use that per se
+
+for demo purposes instantiate a new model sync manager in our code, pass a station in with other vals
+
+can copy how it's being handled in updateStation job
+
+From Jesse:
+
+$msm = app(ModelSyncManager::class); 
+
+//do stuff with $msm->
+
+public function handle(ModelSyncManager $sync): void
+{
+    $station = DasStation::getStationById($this->station_id);
+    $model = ModelFactory::createModel($this->model_code, $station->country, $station->state);
+
+    $sync->updateModel($station, $model);
+}
+
+return the output as a collection so we can cast to json/array/collection -> if done by collection can key by the time stamp to see lt50s by date
+
+more or less just want to see the data
