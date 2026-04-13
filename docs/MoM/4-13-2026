@@ -1,0 +1,23 @@
+from Friday (4/10):
+
+clean code book (galaxy on the cover)
+
+SCRUM certification (or just videos)
+
+
+
+Monday (4/13):
+
+don't want to send file, just send json
+
+added pydantic, looseness of default python dictionary way wasn't ideal
+
+need to have latitude passed through, cannot be set to a default value - cannot be an optional parameter
+
+cultivar could be defaulted to Riesling
+
+will need to copy & paste rather than passing a file when testing
+
+localhost can be switched out with config file in code jesse sent - instead of being Tmax & Tmin - change column name to temperatureMax & temperatureMin
+
+should add requirements.txt to repo
