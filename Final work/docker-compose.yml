@@ -1,0 +1,24 @@
+  lt50-model-api:
+    container_name: lt50-model-api
+    build:
+      context: ./docker/runtimes/Python
+      dockerfile: DockerFile
+    image: lt50-prediction-api:latest
+    working_dir: /var/www/html
+    command: ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8000:8000"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik
+      - traefik.http.routers.lt50-model-api.rule=Host(`api.localhost`)
+      - traefik.http.services.lt50-model-api.loadbalancer.server.port=8000
+      - traefik.http.routers.lt50-model-api.tls=true
+      - traefik.http.routers.lt50-model-api.entrypoints=websecure
+    volumes:
+      - '../das.service.models/FastAPI/JupyterProject:/var/www/html'
+    restart: unless-stopped
+    networks:
+      - traefik
