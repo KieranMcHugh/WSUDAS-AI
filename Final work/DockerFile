@@ -1,0 +1,69 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    dirmngr \
+    gnupg \
+    ca-certificates \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /etc/apt/keyrings
+
+RUN wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc \
+    | gpg --dearmor \
+    > /etc/apt/keyrings/cran.gpg
+
+RUN echo "deb [signed-by=/etc/apt/keyrings/cran.gpg] https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/" \
+    > /etc/apt/sources.list.d/cran.list
+
+# --- Install everything (including NEW R) ---
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    cmake \
+    gfortran \
+    r-base \
+    r-base-dev \
+    python3.11 \
+    python3-pip \
+    python3-venv \
+    python3-dev \
+    libgit2-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libgdal-dev \
+    libgeos-dev \
+    libproj-dev \
+    libudunits2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /var/www/html
+
+COPY requirements.txt /var/www/html/requirements.txt
+
+RUN pip3 install --upgrade pip setuptools wheel
+RUN pip3 install -r requirements.txt
+
+RUN Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org')"
+
+RUN Rscript -e "install.packages(c( \
+    'data.table', \
+    'ggpubr', \
+    'weathermetrics', \
+    'chron', \
+    'GenSA', \
+    'ecmwfr' \
+), repos='https://cloud.r-project.org')"
+
+RUN Rscript -e "remotes::install_github('EduardoFernandezC/dormancyR', upgrade='never')"
+
+RUN Rscript -e "install.packages('chillR', repos='https://cloud.r-project.org', dependencies=c('Depends','Imports'))"
+
+RUN Rscript -e "install.packages('fruclimadapt', repos='https://cloud.r-project.org', dependencies=c('Depends','Imports'))"
+
+RUN Rscript -e "if (!requireNamespace('fruclimadapt', quietly = FALSE)) quit(status = 1)"
+
